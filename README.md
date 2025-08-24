@@ -146,8 +146,13 @@ The project is provided "as is", without warranty of any kind.
 - .env contains sensitive API keys and should never be pushed to Git.
 
 
-## Screenshots
-Check Frontend/Screenshot.png
+## Screenshots  
+
+### Main Globe View  
+![Screenshot1](frontend/Screenshot1.png)  
+
+### Attack Visualization Example  
+![Screenshot2](frontend/Screenshot2.png)  
 
 
 
