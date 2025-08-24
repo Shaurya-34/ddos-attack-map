@@ -105,9 +105,12 @@ In the project root, create a .env file with the following keys:
  	npm run dev
 
 
-
 ### 3. Open your browser at
-  http://localhost:3000 to view the globe.
+  	 http://localhost:3000 to view the globe.
+  
+
+### 4. Check the raw IP + ML classification data (optional):
+ 	 http://127.0.0.1:8000/combined
 
 
 
@@ -129,6 +132,11 @@ The project can optionally use the GeoLite2-Country.mmdb file for IP geolocation
 - The model classifies IP addresses in real-time using AbuseIPDB scores and country codes.
 - ip\_classifier.joblib and country\_encoder.joblib are included in ddos-map/backend/models.
 - Training scripts are in ddos-map/model/ in case you want to retrain the model.
+
+> **Note:** AbuseIPDB data does not directly indicate DDoS attacks.  
+> Instead, it provides general reports of abusive IPs.  
+> The ML model analyzes this data along with country codes to **predict which IPs are more likely associated with DDoS traffic**, making the visualization more relevant.  
+
 
 # LICENSE
 
