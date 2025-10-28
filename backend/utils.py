@@ -32,8 +32,7 @@ def ip_hmac(ip: str) -> str:
         return ""
     if not isinstance(ip, str):
         ip = str(ip)
-    h = hmac.new(IP_HMAC_KEY_BYTES, ip.encode("utf-8"), hashlib.sha256).hexdigest()
-    return h
+    return hmac.new(IP_HMAC_KEY_BYTES, ip.encode("utf-8"), hashlib.sha256).hexdigest()
 
 # Load existing cache into a dictionary keyed by ipHash
 ip_cache = {}
@@ -91,20 +90,28 @@ def geolocate_ip(ip: str):
         resp = requests.get(url, timeout=6)
         resp.raise_for_status()
         data = resp.json()
-        if "loc" in data:
+
+        if "loc" in data and isinstance(data["loc"], str):
             try:
                 lat, lon = map(float, data["loc"].split(","))
-                # Persist using ipHash, NOT plaintext IP
-                ip_cache[iph] = [lat, lon]
-                try:
-                    # append to CSV as ipHash,lat,lon
-                    with open(CACHE_FILE, "a", newline="", encoding="utf-8") as f:
-                        writer = csv.writer(f)
-                        writer.writerow([iph, lat, lon])
-                except Exception as e:
-                    print(f"Warning: failed to append to cache file: {e}")
-                return [lat, lon]
-        # fallback: may have country only or no loc
+            except Exception as e:
+                print(f"Error parsing loc for {ip}: {e}")
+                return None
+
+            # Persist using ipHash, NOT plaintext IP
+            ip_cache[iph] = [lat, lon]
+            try:
+                # append to CSV as ipHash,lat,lon
+                with open(CACHE_FILE, "a", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([iph, lat, lon])
+            except Exception as e:
+                print(f"Warning: failed to append to cache file: {e}")
+            return [lat, lon]
+
+        # if no 'loc' available, return None
+        return None
+
     except requests.RequestException as e:
         print(f"Error geolocating {ip}: {e}")
     except Exception as e:
@@ -112,7 +119,7 @@ def geolocate_ip(ip: str):
 
     return None
 
-def score_ip(ip, abuse_score=0, country_code="UNK"):
+def score_ip(ip, abuse_score:float=0.0, country_code="UNK"):
     """
     Returns model prediction (int) if model+encoder present, else None.
     Input ip is unused for scoring (we rely on country_code + abuse_score).
