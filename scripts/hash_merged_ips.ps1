@@ -71,7 +71,8 @@ function Compute-HmacHex([string] $s) {
 $out = New-Object System.Collections.Generic.List[PSObject]
 $outCols = @("ipHash") + ($cols | Where-Object { $_ -ne "ipAddress" })
 
-$rowCount = @($data).Count`r`nWrite-Host "Hashing $rowCount rows..."
+$rowCount = @($data).Count
+Write-Host "Hashing $rowCount rows..."
 foreach ($row in $data) {
     $rawIp = $row.ipAddress
     $ipHash = ""

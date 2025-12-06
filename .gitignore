@@ -1,2 +1,21 @@
-﻿
+﻿# Environment
 .env
+.venv/
+
+# Logs
+uvicorn.log
+*.log
+
+# Python
+*.pyc
+__pycache__/
+
+# Backups
+*.bak
+data/*.bak
+
+# Archives
+*.zip
+
+# Dependencies
+node_modules

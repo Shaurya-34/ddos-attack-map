@@ -1,156 +1,310 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import GlobeT from "react-globe.gl";
-import axios from "axios";
+import { useRef, useMemo, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Sphere } from '@react-three/drei';
+import * as THREE from 'three';
 
-const BUCKET_DEG = 0.5; // aggregation size (bigger => more privacy)
+function PulsingDot({ position, color }: { position: [number, number, number], color: string }) {
+  const meshRef = useRef<THREE.Mesh>(null);
 
-interface AbuseIP {
-  latlon?: [number, number];
-  dos_score?: number | string;
-  ipId?: string;
-  ipHash?: string;
-}
-
-interface CloudflareAttack {
-  originLat?: number | string;
-  originLng?: number | string;
-  targetLat?: number | string;
-  targetLng?: number | string;
-  value?: number | string;
-}
-
-export function Globe() {
-  const [abuseIPs, setAbuseIPs] = useState<AbuseIP[]>([]);
-  const [cfAttacks, setCfAttacks] = useState<any[]>([]);
-  const [currentRange, setCurrentRange] = useState(5);
-  const ranges = [3, 5, 7, 14];
-  const [rangeIndex, setRangeIndex] = useState(1);
-  const [loading, setLoading] = useState(false);
-
-  const jitter = (lat: number, lon: number, maxOffset = 0.2) => ({
-    lat: lat + (Math.random() - 0.5) * maxOffset,
-    lon: lon + (Math.random() - 0.5) * maxOffset
+  useFrame((state) => {
+    if (meshRef.current) {
+      // Pulsing animation
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.3;
+      meshRef.current.scale.setScalar(scale);
+    }
   });
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // relative path so it works on prod (same origin) and local (proxy ok)
-      const res = await axios.get(`/combined?days=${currentRange}`, { timeout: 8000 });
+  return (
+    <mesh ref={meshRef} position={position}>
+      <sphereGeometry args={[0.04, 16, 16]} />
+      <meshBasicMaterial
+        color={color}
+        transparent
+        opacity={0.9}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
 
-      setAbuseIPs(res.data?.abuseipdb || []);
+function AttackArc({ start, end, color }: { start: [number, number, number], end: [number, number, number], color: string }) {
+  const tubeRef = useRef<THREE.Mesh>(null);
 
-      const arcs = (res.data?.cloudflare || [])
-        .map((d: CloudflareAttack) => {
-          if (!d.originLat || !d.originLng || !d.targetLat || !d.targetLng) return null;
-          const o = jitter(Number(d.originLat), Number(d.originLng));
-          const t = jitter(Number(d.targetLat), Number(d.targetLng));
-          return { startLat: o.lat, startLng: o.lon, endLat: t.lat, endLng: t.lon, value: Number(d.value) || 1 };
-        })
-        .filter(Boolean);
+  const { curve, geometry } = useMemo(() => {
+    const startVec = new THREE.Vector3(...start);
+    const endVec = new THREE.Vector3(...end);
+    const midPoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
+    midPoint.normalize().multiplyScalar(3);
 
-      setCfAttacks([]);
-      setTimeout(() => setCfAttacks(arcs), 120);
-    } catch (e) {
-      console.error("fetch /combined failed:", e);
-    } finally {
-      setLoading(false);
+    const curve = new THREE.QuadraticBezierCurve3(startVec, midPoint, endVec);
+    const geometry = new THREE.TubeGeometry(curve, 64, 0.01, 8, false);
+    return { curve, geometry };
+  }, [start, end]);
+
+  // Animate the texture offset to create flowing effect
+  useFrame(() => {
+    if (tubeRef.current && tubeRef.current.material) {
+      const material = tubeRef.current.material as THREE.MeshBasicMaterial;
+      if (material.map) {
+        material.map.offset.x -= 0.005; // Slower animation speed
+      }
     }
-  }, [currentRange]);
+  });
 
-  useEffect(() => {
-    fetchData();
-    const timer = setInterval(() => {
-      const next = (rangeIndex + 1) % ranges.length;
-      setRangeIndex(next);
-      setCurrentRange(ranges[next]);
-    }, 20000);
-    return () => clearInterval(timer);
-  }, [rangeIndex, fetchData]);
+  // Create animated texture
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d')!;
 
-  // aggregate abuse points into grid cells (no single-IP dots)
-  const aggregatedPoints = useMemo(() => {
-    const buckets = new Map<string, { lat: number; lon: number; count: number; maxScore: number; ids: string[] }>();
-    for (const r of abuseIPs) {
-      const loc = r?.latlon;
-      if (!Array.isArray(loc) || loc.length < 2) continue;
-      const lat = Number(loc[0]), lon = Number(loc[1]);
-      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-
-      const keyLat = Math.round(lat / BUCKET_DEG) * BUCKET_DEG;
-      const keyLon = Math.round(lon / BUCKET_DEG) * BUCKET_DEG;
-      const key = `${keyLat.toFixed(3)}_${keyLon.toFixed(3)}`;
-
-      const cur = buckets.get(key) || { lat: keyLat, lon: keyLon, count: 0, maxScore: 0, ids: [] };
-      cur.count += 1;
-      const s = Number(r.dos_score) || 0;
-      if (s > cur.maxScore) cur.maxScore = s;
-
-      const id = r.ipId || r.ipHash || null; // backend never returns raw ip
-      if (id && cur.ids.length < 3) cur.ids.push(id);
-
-      buckets.set(key, cur);
+    // Create dashed pattern
+    ctx.fillStyle = color;
+    for (let i = 0; i < 64; i += 16) {
+      ctx.fillRect(i, 0, 10, 8);
     }
 
-    return Array.from(buckets.values()).map(b => ({
-      lat: b.lat + (Math.random() - 0.5) * (BUCKET_DEG * 0.3),
-      lng: b.lon + (Math.random() - 0.5) * (BUCKET_DEG * 0.3),
-      value: b.count,
-      maxScore: b.maxScore,
-      ids: b.ids
-    }));
-  }, [abuseIPs]);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }, [color]);
 
   return (
-    <div style={{ position: "relative", height: "100vh" }}>
-      {/* control card */}
-      <div style={{
-        position: "absolute", zIndex: 3, top: 12, left: 12,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.18))",
-        color: "white", padding: "10px 14px", borderRadius: 12,
-        boxShadow: "0 6px 18px rgba(0,0,0,0.4)", minWidth: 220,
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>DOS Attack Map</div>
-        <div style={{ fontSize: 12, opacity: 0.9, marginTop: 6 }}>
-          Aggregated ({BUCKET_DEG}°) abuse points + Cloudflare arcs.
+    <group>
+      {/* Animated tube arc */}
+      <mesh ref={tubeRef} geometry={geometry}>
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          opacity={0.8}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Glow effect */}
+      <mesh geometry={geometry}>
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.2}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function EarthGlobe({ attacks }: { attacks: Attack[] }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const texture = useMemo(() => {
+    const loader = new THREE.TextureLoader();
+    // Using a free Earth texture from NASA
+    return loader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
+  }, []);
+
+  useFrame((state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.05;
+    }
+  });
+
+  const { validArcs, dots } = useMemo(() => {
+    const coords = (lat: number, lon: number, radius = 2) => {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return [
+        -(radius * Math.sin(phi) * Math.cos(theta)),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      ] as [number, number, number];
+    };
+
+    const validArcs: Array<{ start: [number, number, number], end: [number, number, number], color: string }> = [];
+    const dots: Array<{ position: [number, number, number], color: string }> = [];
+
+    attacks.forEach(attack => {
+      const start = coords(attack.sourceCoords.lat, attack.sourceCoords.lon);
+      const end = coords(attack.targetCoords.lat, attack.targetCoords.lon);
+      // Match the badge color scheme: red (high), amber (med), green (low)
+      const color = attack.severity > 75 ? '#ef4444' : attack.severity > 40 ? '#fbbf24' : '#22c55e';
+
+      // Calculate distance between start and end
+      const distance = Math.sqrt(
+        Math.pow(end[0] - start[0], 2) +
+        Math.pow(end[1] - start[1], 2) +
+        Math.pow(end[2] - start[2], 2)
+      );
+
+      // If distance is very small (same location or very close), render as dot
+      if (distance < 0.1) {
+        dots.push({ position: start, color });
+      } else {
+        validArcs.push({ start, end, color });
+      }
+    });
+
+    return { validArcs, dots };
+  }, [attacks]);
+
+  return (
+    <group ref={groupRef}>
+      <Sphere args={[2, 64, 64]}>
+        <meshStandardMaterial
+          map={texture}
+          roughness={0.6}
+          metalness={0.1}
+          emissive="#2a3a4a"
+          emissiveIntensity={0.2}
+        />
+      </Sphere>
+
+      {/* Subtle atmosphere glow */}
+      <Sphere args={[2.05, 32, 32]}>
+        <meshBasicMaterial
+          color="#5a8cb0"
+          transparent
+          opacity={0.12}
+          side={THREE.BackSide}
+        />
+      </Sphere>
+
+      {/* Valid arcs rotate with the globe */}
+      {validArcs.map((arc, i) => (
+        <AttackArc key={`arc-${i}`} {...arc} />
+      ))}
+
+      {/* Pulsing dots for same-location attacks */}
+      {dots.map((dot, i) => (
+        <PulsingDot key={`dot-${i}`} position={dot.position} color={dot.color} />
+      ))}
+    </group>
+  );
+}
+
+interface Attack {
+  sourceCoords: { lat: number; lon: number };
+  targetCoords: { lat: number; lon: number };
+  severity: number;
+}
+
+
+export function Globe({ attacks = [] }: { attacks?: Attack[] }) {
+  return (
+    <div className="w-full h-full relative overflow-hidden">
+      {/* Deep Space Background with Multiple Layers */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#020308] via-[#050a15] to-[#0a0e1a]">
+
+        {/* Deep gradient overlay for extra depth */}
+        <div className="absolute inset-0 bg-gradient-radial from-transparent via-[#030612]/50 to-[#000000]"></div>
+
+        {/* Distant nebula clouds - deeper in space */}
+        <div className="absolute inset-0 opacity-25">
+          <div className="absolute top-1/4 right-1/3 w-[600px] h-[600px] bg-purple-900/30 rounded-full blur-[150px] animate-pulse"
+            style={{ animationDuration: '12s', animationDelay: '0s' }}></div>
+          <div className="absolute bottom-1/3 left-1/4 w-[500px] h-[500px] bg-blue-900/25 rounded-full blur-[140px] animate-pulse"
+            style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-indigo-900/20 rounded-full blur-[120px] animate-pulse"
+            style={{ animationDuration: '14s', animationDelay: '4s' }}></div>
         </div>
-        <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-          <button onClick={() => fetchData()} style={{ flex: 1, padding: "6px 8px", borderRadius: 8, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer" }}>Refresh</button>
-          <button onClick={() => { setCurrentRange(1); fetchData(); }} style={{ padding: "6px 8px", borderRadius: 8, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer" }}>Now</button>
+
+        {/* Mid-layer nebula - brighter, closer */}
+        <div className="absolute inset-0 opacity-35">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/25 rounded-full blur-[120px] animate-pulse"
+            style={{ animationDuration: '8s' }}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] animate-pulse"
+            style={{ animationDuration: '6s', animationDelay: '1s' }}></div>
+          <div className="absolute top-1/3 right-1/3 w-72 h-72 bg-cyan-600/18 rounded-full blur-[90px] animate-pulse"
+            style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
         </div>
-        <div style={{ marginTop: 8, display: "flex", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 12 }}>Range: {currentRange}d</div>
-          <div style={{ fontSize: 12, opacity: 0.85 }}>{loading ? "Loading…" : "Ready"}</div>
+
+        {/* Distant stars layer - smaller, dimmer */}
+        <div className="absolute inset-0">
+          {Array.from({ length: 150 }).map((_, i) => (
+            <div
+              key={`distant-${i}`}
+              className="absolute bg-white/40 rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                width: `${Math.random() * 1 + 0.3}px`,
+                height: `${Math.random() * 1 + 0.3}px`,
+                opacity: Math.random() * 0.4 + 0.1,
+              }}
+            />
+          ))}
         </div>
+
+        {/* Medium distance stars with subtle twinkle */}
+        <div className="absolute inset-0">
+          {Array.from({ length: 80 }).map((_, i) => (
+            <div
+              key={`medium-${i}`}
+              className="absolute bg-white rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                width: `${Math.random() * 1.5 + 0.5}px`,
+                height: `${Math.random() * 1.5 + 0.5}px`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${Math.random() * 3 + 3}s`,
+                opacity: Math.random() * 0.6 + 0.3,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Close bright stars */}
+        <div className="absolute inset-0">
+          {Array.from({ length: 40 }).map((_, i) => (
+            <div
+              key={`close-${i}`}
+              className="absolute bg-white rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                width: `${Math.random() * 2.5 + 1}px`,
+                height: `${Math.random() * 2.5 + 1}px`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${Math.random() * 2 + 2}s`,
+                opacity: Math.random() * 0.8 + 0.4,
+                boxShadow: '0 0 2px rgba(255, 255, 255, 0.8)',
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Vignette effect for depth */}
+        <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-black/60"></div>
       </div>
 
-      <GlobeT
-        height={window.innerHeight}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+      {/* Globe Canvas */}
+      <Canvas
+        camera={{ position: [0, 0, 8], fov: 50 }}
+        gl={{ antialias: true, alpha: true }}
+        style={{ position: 'relative', zIndex: 10 }}
+      >
+        <ambientLight intensity={0.65} />
+        <pointLight position={[10, 10, 10]} intensity={1.3} />
+        <pointLight position={[-10, -10, -10]} intensity={0.5} color="#60a5fa" />
 
-        // aggregated abuse points
-        pointsData={aggregatedPoints}
-        pointLat={(d: any) => d.lat}
-        pointLng={(d: any) => d.lng}
-        pointAltitude={(d: any) => 0.02 + Math.log1p(d.value) * 0.01}
-        pointRadius={(d: any) => 0.2 + Math.sqrt(d.value) * 0.15}
-        pointColor={(d: any) => d.maxScore >= 90 ? "crimson" : d.maxScore >= 50 ? "orange" : "gold"}
-        pointLabel={(d: any) => `Count: ${d.value}\nMax score: ${d.maxScore}\nIDs: ${d.ids.join(", ")}`}
+        <EarthGlobe attacks={attacks} />
 
-        // cloudflare arcs
-        arcsData={cfAttacks}
-        arcStartLat={(d: any) => d.startLat}
-        arcStartLng={(d: any) => d.startLng}
-        arcEndLat={(d: any) => d.endLat}
-        arcEndLng={(d: any) => d.endLng}
-        arcColor={() => "#ff4d4d"}
-        arcDashLength={0.4}
-        arcDashGap={0.02}
-        arcDashAnimateTime={2500}
-        animateIn
-      />
+        <OrbitControls
+          enableZoom={true}
+          enablePan={false}
+          minDistance={5}
+          maxDistance={15}
+          autoRotate={false}
+          rotateSpeed={0.5}
+        />
+      </Canvas>
+
+      <div className="absolute bottom-6 left-6 glass px-4 py-2 rounded-lg z-20">
+        <p className="text-xs text-muted-foreground">
+          Drag to rotate • Scroll to zoom
+        </p>
+      </div>
     </div>
   );
 }

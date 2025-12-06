@@ -1,4 +1,3 @@
-# backend/mains.py
 import os
 import requests
 import pandas as pd
@@ -6,25 +5,24 @@ import json
 import math
 from fastapi import FastAPI, Query
 from dotenv import load_dotenv
-from backend.utils import geolocate_ip, score_ip
+from backend.utils import score_ip   # geolocate_ip not used for AbuseIPDB
 from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 load_dotenv()
-CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_RADAR_TOKEN")
-ABUSEIPDB_TOKEN = os.getenv("ABUSEIPDB_API_KEY")
+CLOUDFLARE_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN")
 
-# Project root (so paths work everywhere)
+# Project root
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-# country coordinates fallback
+# Country coordinates
 COUNTRY_COORDS_FILE = os.path.join(BASE_DIR, "frontend", "src", "data", "countryCoords.json")
-with open(COUNTRY_COORDS_FILE, encoding="utf-8") as f:
+with open(COUNTRY_COORDS_FILE, encoding="utf-8-sig") as f:
     countryCoords = json.load(f)
 
 app = FastAPI(title="DOS Attack Visualization API")
 
-#  CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,136 +31,129 @@ app.add_middleware(
 )
 
 def safe_float(v):
-    """Return a plain float if v is finite, else None."""
     try:
         f = float(v)
     except Exception:
         return None
-    if not math.isfinite(f):
-        return None
-    return f
+    return f if math.isfinite(f) else None
 
-# Cloudflare fetch
+# ---------------------------
+#  CLOUDFLARE FETCH
+# ---------------------------
 def fetch_cloudflare_attacks(limit=50, date_range="1d"):
     if not CLOUDFLARE_TOKEN:
         return []
-    url = f"https://api.cloudflare.com/client/v4/radar/attacks/layer7/top/attacks?limit={limit}&dateRange={date_range}"
+
+    url = (
+        f"https://api.cloudflare.com/client/v4/radar/attacks/layer7/top/attacks"
+        f"?limit={limit}&dateRange={date_range}"
+    )
     headers = {"Authorization": f"Bearer {CLOUDFLARE_TOKEN}"}
+
     try:
+        print(f"Fetching Cloudflare attacks with date_range={date_range}, limit={limit}")
         resp = requests.get(url, headers=headers, timeout=5)
         resp.raise_for_status()
-        return resp.json().get("result", {}).get("top_0", [])
-    except requests.RequestException as e:
-        print(f"Cloudflare API error: {e}")
+        result = resp.json().get("result", {}).get("top_0", [])
+        print(f"Cloudflare returned {len(result)} attacks")
+        return result
+    except Exception as e:
+        print("Cloudflare API error:", e)
         return []
 
-# AbuseIPDB dataset loader
+# ---------------------------
+#  ABUSEIPDB LOADER (HASHED)
+# ---------------------------
 def load_abuseipdb_dataset(path=None):
     if path is None:
         path = os.path.join(BASE_DIR, "data", "merged_ips.csv")
-    if os.path.exists(path):
-        try:
-            return pd.read_csv(path, dtype=str)
-        except Exception as e:
-            print(f"Failed reading AbuseIPDB dataset {path}: {e}")
-            return pd.DataFrame(columns=["ipAddress", "abuseConfidenceScore", "countryCode"])
-    print(f"AbuseIPDB dataset not found at {path}")
-    return pd.DataFrame(columns=["ipAddress", "abuseConfidenceScore", "countryCode"])
 
-# Combined endpoint
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=["ipHash", "abuseConfidenceScore", "countryCode"])
+
+    try:
+        return pd.read_csv(path, dtype=str)
+    except Exception as e:
+        print("Failed to read merged_ips.csv:", e)
+        return pd.DataFrame(columns=["ipHash", "abuseConfidenceScore", "countryCode"])
+
+# ---------------------------
+#  COMBINED ENDPOINT
+# ---------------------------
 @app.get("/combined")
-def combined(days: int = Query(5, ge=1)):
-    # Cloudflare attacks
-    cf_attacks = fetch_cloudflare_attacks(limit=50, date_range=f"{days}d")
-    cf_attacks_processed = []
+def combined(date_range: str = Query("1d")):
+    # -------------------------
+    # Process Cloudflare attacks
+    # -------------------------
+    cf_raw = fetch_cloudflare_attacks(limit=50, date_range=date_range)
+    cf_out = []
 
-    for attack in cf_attacks:
-        origin_coords = None
-        target_coords = None
+    for a in cf_raw:
+        o_lat, o_lng = None, None
+        t_lat, t_lng = None, None
+        origin_country = a.get("originCountryAlpha2")
+        target_country = a.get("targetCountryAlpha2")
 
-        # Attempt to geolocate IPs (may return None or [lat,lng])
-        if attack.get("originIP"):
-            origin_coords = geolocate_ip(attack["originIP"])
-        if attack.get("targetIP"):
-            target_coords = geolocate_ip(attack["targetIP"])
-
-        # Fallback to country coords if needed
-        if not origin_coords and attack.get("originCountryAlpha2"):
-            c = countryCoords.get(attack["originCountryAlpha2"])
+        if origin_country:
+            c = countryCoords.get(origin_country)
             if c:
-                origin_coords = [c.get("lat"), c.get("lon")]
-        if not target_coords and attack.get("targetCountryAlpha2"):
-            c = countryCoords.get(attack["targetCountryAlpha2"])
+                o_lat, o_lng = c["lat"], c["lon"]
+
+        if target_country:
+            c = countryCoords.get(target_country)
             if c:
-                target_coords = [c.get("lat"), c.get("lon")]
+                t_lat, t_lng = c["lat"], c["lon"]
 
-        # sanitize numeric values
-        if origin_coords and target_coords:
-            o_lat = safe_float(origin_coords[0])
-            o_lng = safe_float(origin_coords[1])
-            t_lat = safe_float(target_coords[0])
-            t_lng = safe_float(target_coords[1])
-            val = safe_float(attack.get("value", 1))
+        if None in (o_lat, o_lng, t_lat, t_lng):
+            continue
 
-            if None in (o_lat, o_lng, t_lat, t_lng):
-                # skip any arc with invalid coordinates
-                continue
+        cf_out.append({
+            "originCountryAlpha2": origin_country,
+            "targetCountryAlpha2": target_country,
+            "originLat": safe_float(o_lat),
+            "originLng": safe_float(o_lng),
+            "targetLat": safe_float(t_lat),
+            "targetLng": safe_float(t_lng),
+            "value": safe_float(a.get("value", 1)) or 1.0
+        })
 
-            cf_attacks_processed.append({
-                "originLat": o_lat,
-                "originLng": o_lng,
-                "targetLat": t_lat,
-                "targetLng": t_lng,
-                "value": float(val) if val is not None else 1.0
-            })
-
-    # AbuseIPDB points
+    # -------------------------
+    # Process AbuseIPDB (HASHED ONLY)
+    # -------------------------
     df = load_abuseipdb_dataset()
-    abuse_results = []
+    abuse_out = []
 
     if not df.empty:
-        # sample safely
         df_sample = df.sample(n=min(100, len(df)))
-        for _, row in df_sample.iterrows():
-            ip_raw = row.get("ipAddress", "")
-            latlon = None
-            try:
-                # Geolocate using original IP if present (utils.geolocate_ip must not store plaintext)
-                latlon = geolocate_ip(ip_raw) if ip_raw else None
-            except Exception:
-                latlon = None
 
-            # compute dos score (may return None)
+        for _, r in df_sample.iterrows():
+            ipId = r.get("ipHash")  # Use ipHash from CSV
+            abuse = safe_float(r.get("abuseConfidenceScore") or 0)
+            cc = r.get("countryCode") or "UNK"
+
+            # country-level coordinates (anonymized)
+            coords = countryCoords.get(cc)
+            latlon = [coords["lat"], coords["lon"]] if coords else None
+
+            # ML score
             try:
-                dos_score = score_ip(
-                    ip_raw,
-                    int(float(row.get("abuseConfidenceScore") or 0)),
-                    row.get("countryCode") or "UNK"
-                )
+                dos_score = score_ip(None, int(abuse or 0), cc)
             except Exception:
                 dos_score = None
 
-            # sanitize latlon
-            if latlon and isinstance(latlon, (list, tuple)) and len(latlon) >= 2:
-                lat = safe_float(latlon[0])
-                lon = safe_float(latlon[1])
-                if lat is None or lon is None:
-                    latlon = None
-                else:
-                    latlon = [lat, lon]
-
-            # do not include raw IP; only include ipHash if present or omit
-            ip_identifier = row.get("ipHash") or None
-
-            abuse_results.append({
-                "ipId": ip_identifier,            # hashed id or None
-                "abuseConfidenceScore": safe_float(row.get("abuseConfidenceScore") or 0),
-                "countryCode": row.get("countryCode") or "UNK",
+            abuse_out.append({
+                "ipId": ipId,
+                "abuseConfidenceScore": abuse,
+                "countryCode": cc,
                 "latlon": latlon,
-                "dos_score": int(dos_score) if (dos_score is not None and isinstance(dos_score, (int, float)) and math.isfinite(dos_score)) else None
+                "dos_score": int(dos_score) if dos_score is not None else None
             })
 
-    return {
-        "cloudflare": cf_attacks_processed,
-        "abuseipdb": abuse_results
-    }
+    return {"cloudflare": cf_out, "abuseipdb": abuse_out}
+
+# ---------------------------
+# Optional health check
+# ---------------------------
+@app.get("/")
+def root():
+    return {"status": "ok", "msg": "API running"}
