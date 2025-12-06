@@ -94,12 +94,25 @@ def load_abuseipdb_dataset(path=None):
 # ---------------------------
 #  LIVE ABUSEIPDB API FETCH
 # ---------------------------
+# Cache for AbuseIPDB data (to avoid rate limits)
+abuseipdb_cache = {"data": None, "timestamp": None}
+CACHE_DURATION = 86400  # 24 hours in seconds
+
 def hash_ip(ip_address):
     """Hash an IP address using SHA-256 for privacy"""
     return hashlib.sha256(ip_address.encode()).hexdigest()
 
 def fetch_live_abuseipdb_threats(limit=50):
-    """Fetch live reported IPs from AbuseIPDB API with real-time hashing"""
+    """Fetch live reported IPs from AbuseIPDB API with real-time hashing (cached for 24h)"""
+    import time
+    
+    # Check cache first
+    if abuseipdb_cache["data"] is not None and abuseipdb_cache["timestamp"] is not None:
+        elapsed = time.time() - abuseipdb_cache["timestamp"]
+        if elapsed < CACHE_DURATION:
+            print(f"Using cached AbuseIPDB data ({int(elapsed/3600)}h old)")
+            return abuseipdb_cache["data"]
+    
     if not ABUSEIPDB_TOKEN:
         print("No AbuseIPDB token, skipping live fetch")
         return []
@@ -134,6 +147,11 @@ def fetch_live_abuseipdb_threats(limit=50):
             })
         
         print(f"Fetched and hashed {len(threats)} live threats")
+        
+        # Cache successful response
+        abuseipdb_cache["data"] = threats
+        abuseipdb_cache["timestamp"] = time.time()
+        
         return threats
         
     except Exception as e:
