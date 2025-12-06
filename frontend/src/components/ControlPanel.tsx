@@ -42,6 +42,9 @@ export function ControlPanel({ onAttacksUpdate, onAbuseThreatUpdate, timeRange }
     const fetchData = async () => {
       setIsRefreshing(true); // Start refresh animation
       try {
+        // Use environment variable for API URL, fallback to empty for local dev (proxy)
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
         console.log('Fetching data from /combined with timeRange:', timeRange);
         // Map timeRange to backend date_range parameter
         const dateRangeMap: Record<string, string> = {
@@ -51,7 +54,7 @@ export function ControlPanel({ onAttacksUpdate, onAbuseThreatUpdate, timeRange }
           '24h': '1d'
         };
         const dateRange = dateRangeMap[timeRange] || '1d';
-        const res = await fetch(`/combined?date_range=${dateRange}`);
+        const res = await fetch(`${API_BASE_URL}/combined?date_range=${dateRange}`);
 
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
