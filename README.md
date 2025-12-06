@@ -115,6 +115,17 @@ npm run dev
 
 ---
 
+## 🟣 AbuseIPDB Features
+
+- **Live Threat Intelligence** - Real-time threat IPs with SHA-256 hashing for privacy
+- **Purple Pulsing Dots** - Distinct purple markers on globe for AbuseIPDB threats
+- **Auto-Cycling Visualization** - Rotates through 50 threats every 13 seconds, displaying 10 at a time
+- **24-Hour Caching** - Avoids rate limits while keeping data fresh
+- **Mixed Incident Feed** - Shuffled display of Cloudflare attacks and AbuseIPDB threats
+- **Privacy-Preserving** - Coordinate randomization (±50km) for enhanced anonymity
+
+---
+
 ## 📸 Screenshots
 
 ### Main Globe View
