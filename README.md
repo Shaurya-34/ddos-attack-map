@@ -1,166 +1,249 @@
-#  DDoS Map Visualization
+# 🌍 ThreatPulse Monitor
 
+A real-time DDoS attack visualization platform featuring an interactive 3D globe, live threat metrics, and deep space aesthetics. Powered by Cloudflare Radar and AbuseIPDB data with machine learning threat classification.
 
-
-A real-time visualization of distributed denial-of-service (DDoS) attacks on a globe, using live data from Cloudflare and AbuseIPDB. The project uses a trained machine learning model to classify IPs and show their threat level.
-
-
+![ThreatPulse Monitor](frontend/screenshot-main.png)
 
 ---
 
+## ✨ Features
 
+### 🎨 Visual Design
+- **Immersive Space Background** - Multi-layered starfield with animated nebula effects
+- **3D Interactive Globe** - Realistic Earth texture with smooth rotation and zoom controls
+- **Animated Attack Arcs** - Flowing cyan/red arcs showing attack paths between countries
+- **Pulsing Attack Indicators** - Glowing dots for same-location attacks
+- **Premium UI** - Glassmorphic panels with depth and modern aesthetics
 
-## Features
+### 📊 Live Data & Metrics
+- **Real-Time Attack Feed** - Live updates from Cloudflare Radar API
+- **Dynamic Trend Indicators** - Live-calculated percentage changes for metrics
+- **Time Range Filtering** - View attacks from last 5m, 1h, 24h, or live
+- **Auto-Refresh** - Optional automatic data updates
+- **Severity-Based Color Coding** - Green (low) / Amber (medium) / Red (high)
 
+### 🔒 Security & Privacy
+- **IP Anonymization** - All IPs hashed with SHA-256
+- **ML Threat Scoring** - Machine learning model for threat classification
+- **Country-Level Geolocation** - Privacy-preserving location data
+- **No Raw IP Storage** - Full GDPR compliance
 
-- Real-time attack visualization on a 3D globe
-- Cloudflare attack data integration
-- AbuseIPDB threat scoring using ML model
-- IP geolocation caching for faster performance
-- Color-coded attack points based on threat level
-
-
+### 🛠️ Technical Stack
+- **Frontend**: React + TypeScript + Vite
+- **3D Rendering**: Three.js with React Three Fiber
+- **Backend**: FastAPI (Python)
+- **Styling**: TailwindCSS with custom gradients
+- **Data Sources**: Cloudflare Radar + AbuseIPDB
 
 ---
 
+## 🚀 Quick Start
 
-## Setup \& API Keys
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.8+
+- API keys (Cloudflare Radar)
 
+### 1. Clone Repository
+```bash
+git clone https://github.com/Shaurya-34/ddos-attack-map.git
+cd ddos-attack-map
+```
 
-## 1. Clone the repository
+### 2. Install Dependencies
 
+**Backend:**
+```bash
+pip install -r requirements.txt
+```
 
-	- git clone https://github.com/Shaurya-34/ddos-map.git
+**Frontend:**
+```bash
+cd frontend
+npm install
+cd ..
+```
 
-	- cd ddos-map
+### 3. Configure Environment Variables
 
+Create a `.env` file in the project root:
 
+```env
+CLOUDFLARE_API_TOKEN=your_cloudflare_token_here
+```
 
-## 2. Install frontend dependencies
+> **Note**: The `ABUSEIPDB_API_KEY` and `IPINFO_TOKEN` are optional. The project uses pre-hashed IP data for privacy.
 
-	- cd frontend
+### 4. Run the Application
 
-	- npm install
+**Start Backend:**
+```bash
+uvicorn backend.mains:app --reload
+```
 
+**Start Frontend** (in a new terminal):
+```bash
+cd frontend
+npm run dev
+```
 
+**Access the App:**
+- Frontend: `http://localhost:5173`
+- Backend API: `http://127.0.0.1:8000/combined`
 
-## 3.Install backend dependencies
+---
 
-	-cd ..
+## 🔑 API Keys Setup
 
-	-pip install -r requirements.txt
+### Cloudflare Radar Token (Required)
+1. Sign up at [Cloudflare](https://www.cloudflare.com/)
+2. Navigate to [Cloudflare Radar API](https://developers.cloudflare.com/radar/)
+3. Generate an API token with Radar read permissions
+4. Add to `.env` as `CLOUDFLARE_API_TOKEN`
 
+### AbuseIPDB API Key (Optional)
+1. Register at [AbuseIPDB](https://www.abuseipdb.com/)
+2. Verify email and navigate to API settings
+3. Copy your API key
+4. Add to `.env` as `ABUSEIPDB_API_KEY`
 
-## 4. Create .env file
+> **Security Note**: Never commit your `.env` file. It's automatically ignored by Git.
 
-In the project root, create a .env file with the following keys:
+---
 
-	- CLOUDFLARE\_RADAR\_TOKEN=<your\_cloudflare\_token>
+## 📸 Screenshots
 
-	- ABUSEIPDB\_API\_KEY=<your\_abuseipdb\_key>
+### Main Globe View
+Real-time attack visualization with deep space background and live metrics.
 
-	- IPINFO\_TOKEN=<your\_ipinfo\_token>
+![Main View](frontend/screenshot-main.png)
 
+### Time Range Selector
+Filter attacks by time period (Live, 5m, 1h, 24h).
 
+![Time Range](frontend/screenshot-timerange.png)
 
+---
 
-# (IMP) How to get the API keys:
+## 🤖 Machine Learning Model
 
+The project includes a pre-trained ML model for threat classification:
 
-## Cloudflare Radar Token (CLOUDFLARE\_RADAR\_TOKEN)
+- **Model Files**: `backend/models/ip_classifier.joblib` and `country_encoder.joblib`
+- **Training Data**: Anonymized, hashed IP datasets
+- **Prediction**: Real-time DDoS likelihood scoring based on abuse confidence and country codes
 
-	1. Sign up for a Cloudflare account.
-	2. Go to Cloudflare Radar API and generate a personal API token.
-	3. Make sure it has permission to read attack data.
+> **Note**: AbuseIPDB provides general abuse reports, not direct DDoS indicators. The ML model analyzes patterns to predict DDoS-related threats.
 
+**To Retrain** (optional):
+```bash
+cd model
+python train_model.py
+```
 
+---
 
-## AbuseIPDB API Key (ABUSEIPDB\_API\_KEY)
+## 🎯 Recent Updates
 
-	1. Register at AbuseIPDB
-	2. Verify your email and log in.
-	3. Go to API Key page and copy your key.
+-  Added immersive deep space background with stars and nebula
+-  Live trend percentages (calculated from real metrics).
+-  Removed non-functional features.
+-  Enhanced glassmorphic UI components
+-  Improved globe rendering with atmospheric glow.
+- IP hashing for full anonymization
+-  Optimized data fetching and caching
+-  Redesigned control panel with metric cards
 
-## IPInfo Token (IPINFO\_TOKEN)
-	1. Sign up at IPInfo.io
-	2. After login, go to the API Access page to get your token.
+---
 
+## 📁 Project Structure
 
-# These keys are PRIVATE. DO NOT SHARE them PUBLICLY. 
-  	- The .env file is ignored in Git by .gitignore.
+```
+ddos-attack-map/
+├── backend/
+│   ├── mains.py          # FastAPI server
+│   ├── utils.py          # Geolocation & scoring utilities
+│   └── models/           # ML model files
+├── frontend/
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── pages/        # Page components
+│   │   ├── types/        # TypeScript types
+│   │   └── main.tsx      # Entry point
+│   └── public/           # Static assets (favicon, etc.)
+├── data/
+│   ├── merged_ips.csv    # Hashed IP dataset
+│   └── geolite/          # GeoLite2 database (optional)
+├── model/
+│   └── train_model.py    # ML training script
+└── .env                  # Environment variables (not in Git)
+```
 
+---
 
+> Set `CLOUDFLARE_API_TOKEN` in your deployment environment variables.
 
-# RUNNING THE PROJECT
+---
 
+## 🛡️ Privacy & Compliance
 
+- ✅ **GDPR Compliant**: No raw IP addresses stored or transmitted
+- ✅ **SHA-256 Hashing**: All IPs anonymized before storage
+- ✅ **Country-Level Only**: Location data limited to country coordinates
+- ✅ **No User Tracking**: Zero analytics or user data collection
 
-### 1. Start the backend: 
-	- uvicorn backend.main:app --reload
+---
 
+## 📄 License
 
-### 2. Start the frontend:
+MIT License - See [LICENSE](LICENSE) for details.
 
-	cd frontend
- 	npm run dev
+You are free to:
+- ✅ Use commercially
+- ✅ Modify and distribute
+- ✅ Use privately
+- ⚠️ Must include original license and copyright notice
 
+---
 
-### 3. Open your browser at
-  	 http://localhost:3000 to view the globe.
-  
+## Acknowledgments
 
-### 4. Check the raw IP + ML classification data (optional):
- 	 http://127.0.0.1:8000/combined
+- **Data Sources**: Cloudflare Radar, AbuseIPDB
+- **Geolocation**: GeoLite2 by MaxMind
+- **3D Rendering**: Three.js community
+- **UI Framework**: React & TailwindCSS teams
 
+---
 
+## 📚 Documentation
 
+For detailed API documentation, visit:
+- Backend API: `http://127.0.0.1:8000/docs` (when running locally)
+- Frontend Components: See `frontend/src/components/`
 
+---
 
-## GeoLite Database
+## 🐛 Known Issues
 
-The project can optionally use the GeoLite2-Country.mmdb file for IP geolocation.
+- Globe may render slowly on low-end devices (disable animations in settings)
+- First load may take 2-3 seconds while fetching data
 
-\- You can keep `data/geolite/GeoLite2-Country.mmdb` in the project for faster lookups.  
-\- Make sure to respect the GeoLite2 license(data/geolite/LICENSE.txt).  
-\- Alternatively, you can remove the `.mmdb` file and the project will fall back to IPInfo.io for geolocation.
+---
 
+## 🤝 Contributing
 
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push and create a Pull Request
 
+---
 
-## Machine Learning Model
+## 📧 Contact
 
-- The model classifies IP addresses in real-time using AbuseIPDB scores and country codes.
-- ip\_classifier.joblib and country\_encoder.joblib are included in ddos-map/backend/models.
-- Training scripts are in ddos-map/model/ in case you want to retrain the model.
+For questions or support, open an issue on [GitHub](https://github.com/Shaurya-34/ddos-attack-map/issues).
 
-> **Note:** AbuseIPDB data does not directly indicate DDoS attacks.  
-> Instead, it provides general reports of abusive IPs.  
-> The ML model analyzes this data along with country codes to **predict which IPs are more likely associated with DDoS traffic**, making the visualization more relevant.  
+---
 
-
-# LICENSE
-
-This project is licensed under the MIT License:
-You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the project
-You must include the original license and copyright notice in all copies or substantial portions.
-The project is provided "as is", without warranty of any kind.
-
-
-
-# IMP NOTES
-
-- Keep data/ip\_cache.csv to speed up geolocation lookups.
-- The ML model works without the training dataset, but keeping it allows retraining if needed.
-- .env contains sensitive API keys and should never be pushed to Git.
-
-
-## Screenshots  
-
-### Main Globe View  
-![Screenshot1](frontend/Screenshot1.png)  
-
-### Attack Visualization Example  
-![Screenshot2](frontend/Screenshot2.png)  
-
-
-
+**Built with ❤️ for cybersecurity visualization**
