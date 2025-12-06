@@ -5,10 +5,14 @@ import json
 import math
 import hashlib
 import random
+import warnings
 from fastapi import FastAPI, Query
 from dotenv import load_dotenv
 from backend.utils import score_ip   # geolocate_ip not used for AbuseIPDB
 from fastapi.middleware.cors import CORSMiddleware
+
+# Suppress sklearn warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 # Load environment variables
 load_dotenv()
