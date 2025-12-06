@@ -6,7 +6,7 @@ A real-time DDoS attack visualization platform featuring an interactive 3D globe
 
 ---
 
-## ✨ Features
+##  Features
 
 ### 🎨 Visual Design
 - **Immersive Space Background** - Multi-layered starfield with animated nebula effects
@@ -17,6 +17,7 @@ A real-time DDoS attack visualization platform featuring an interactive 3D globe
 
 ### 📊 Live Data & Metrics
 - **Real-Time Attack Feed** - Live updates from Cloudflare Radar API
+- **Live Threat Intelligence** - Fresh threat IPs from AbuseIPDB with real-time SHA-256 hashing
 - **Dynamic Trend Indicators** - Live-calculated percentage changes for metrics
 - **Time Range Filtering** - View attacks from last 5m, 1h, 24h, or live
 - **Auto-Refresh** - Optional automatic data updates
@@ -70,9 +71,10 @@ Create a `.env` file in the project root:
 
 ```env
 CLOUDFLARE_API_TOKEN=your_cloudflare_token_here
+ABUSEIPDB_API_KEY=your_abuseipdb_key_here
 ```
 
-> **Note**: The `ABUSEIPDB_API_KEY` and `IPINFO_TOKEN` are optional. The project uses pre-hashed IP data for privacy.
+> **Note**: Both API keys are required for full functionality. The app will fallback to static data if AbuseIPDB API is unavailable.
 
 ### 4. Run the Application
 
@@ -101,11 +103,13 @@ npm run dev
 3. Generate an API token with Radar read permissions
 4. Add to `.env` as `CLOUDFLARE_API_TOKEN`
 
-### AbuseIPDB API Key (Optional)
+### AbuseIPDB API Key (Required for Live Data)
 1. Register at [AbuseIPDB](https://www.abuseipdb.com/)
 2. Verify email and navigate to API settings
 3. Copy your API key
 4. Add to `.env` as `ABUSEIPDB_API_KEY`
+
+> **Note**: Live AbuseIPDB threat data is fetched and hashed in real-time for privacy. Falls back to static dataset if API is unavailable.
 
 > **Security Note**: Never commit your `.env` file. It's automatically ignored by Git.
 

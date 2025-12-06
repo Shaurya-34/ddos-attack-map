@@ -6,7 +6,11 @@ import { Attack, LiveMetrics } from '@/types/attack';
 // Live data will be fetched from the backend; mock data imports removed
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export function ControlPanel({ onAttacksUpdate, timeRange }: { onAttacksUpdate: (attacks: Attack[]) => void; timeRange: string }) {
+export function ControlPanel({ onAttacksUpdate, onAbuseThreatUpdate, timeRange }: {
+  onAttacksUpdate: (attacks: Attack[]) => void;
+  onAbuseThreatUpdate?: (threats: any[]) => void;
+  timeRange: string;
+}) {
   // Initialize live data from backend
   const [metrics, setMetrics] = useState<LiveMetrics>({
     activeAttacks: 0,
@@ -57,17 +61,15 @@ export function ControlPanel({ onAttacksUpdate, timeRange }: { onAttacksUpdate: 
         console.log('Received data:', data);
 
         // Transform Cloudflare attacks to our Attack type
-        const liveAttacks = (data.cloudflare || []).map((a: any) => {
-          // Cloudflare's 'value' represents attack volume/intensity
+        const cloudflareAttacks = (data.cloudflare || []).map((a: any) => {
           const attackValue = a.value ?? 0;
-          // Convert to packets per second (multiply by a factor for realistic display)
-          const packetsPerSec = attackValue * 1000; // Assuming value is in thousands
-          // Calculate severity based on attack volume (0-100 scale)
+          const packetsPerSec = attackValue * 1000;
           const severity = Math.min(100, Math.floor((attackValue / 100) * 100));
 
           return {
             id: crypto.randomUUID(),
             timestamp: new Date(),
+            source: 'cloudflare' as const,
             sourceCountry: a.originCountryAlpha2 ?? 'N/A',
             sourceIp: `${a.originLat?.toFixed(2) ?? '0'},${a.originLng?.toFixed(2) ?? '0'}`,
             sourceAsn: 'N/A',
@@ -83,21 +85,45 @@ export function ControlPanel({ onAttacksUpdate, timeRange }: { onAttacksUpdate: 
           };
         });
 
-        console.log('Transformed attacks:', liveAttacks);
+        // Transform AbuseIPDB threats
+        const abuseThreats = (data.abuseipdb || []).map((t: any) => {
+          const confidence = t.abuseConfidenceScore ?? 0;
 
-        // Only update if we have data (prevents blank screen during slow fetches)
-        if (liveAttacks.length > 0) {
-          const limitedAttacks = liveAttacks.slice(0, 10); // Limit to 10 attacks
-          setAttacks(limitedAttacks);
-          onAttacksUpdate(limitedAttacks); // Update parent component
+          return {
+            id: crypto.randomUUID(),
+            timestamp: new Date(),
+            source: 'abuseipdb' as const,
+            sourceCountry: t.countryCode ?? 'UNK',
+            confidence: confidence,
+            ipHash: t.ipId,
+            sourceCoords: t.latlon ? { lat: t.latlon[0], lon: t.latlon[1] } : null,
+          };
+        });
+
+        console.log('Transformed data:', { cloudflareAttacks, abuseThreats });
+
+        // Combine both sources
+        const allIncidents = [...cloudflareAttacks, ...abuseThreats];
+
+        // Shuffle array using Fisher-Yates algorithm for random display order
+        for (let i = allIncidents.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [allIncidents[i], allIncidents[j]] = [allIncidents[j], allIncidents[i]];
+        }
+
+        // Only update if we have data
+        if (allIncidents.length > 0) {
+          setAttacks(allIncidents as any); // Combined & shuffled incidents
+          onAttacksUpdate(cloudflareAttacks); // Only send Cloudflare to globe for arcs
+          onAbuseThreatUpdate?.(abuseThreats); // Send AbuseIPDB to globe for purple dots
 
           // Store previous metrics before updating
           setPrevMetrics(metrics);
 
           // Update current metrics
           const newMetrics = {
-            activeAttacks: liveAttacks.length,
-            peakPps: Math.max(...liveAttacks.map(a => a.packetsPerSec), 0),
+            activeAttacks: cloudflareAttacks.length,
+            peakPps: Math.max(...cloudflareAttacks.map(a => a.packetsPerSec), 0),
             avgDuration: 0,
             totalAttacks24h: data.abuseipdb?.length ?? 0,
           };
@@ -151,7 +177,7 @@ export function ControlPanel({ onAttacksUpdate, timeRange }: { onAttacksUpdate: 
           </h2>
           {lastUpdated && (
             <span className="text-[10px] text-muted-foreground">
-              Updated {lastUpdated.toLocaleTimeString()}
+              Last checked: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
         </div>

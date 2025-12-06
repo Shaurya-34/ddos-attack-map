@@ -29,7 +29,6 @@ export function Navbar({ timeRange, onTimeRangeChange }: NavbarProps) {
             className="bg-muted/50 px-3 py-1.5 rounded text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
           >
             <option value="live">Live</option>
-            <option value="5m">Last 5m</option>
             <option value="1h">Last 1h</option>
             <option value="24h">Last 24h</option>
           </select>

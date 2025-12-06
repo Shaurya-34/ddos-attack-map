@@ -3,7 +3,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 
-function PulsingDot({ position, color }: { position: [number, number, number], color: string }) {
+function PulsingDot({ position, color, size = 0.04 }: {
+  position: [number, number, number];
+  color: string;
+  size?: number;
+}) {
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state) => {
@@ -16,7 +20,7 @@ function PulsingDot({ position, color }: { position: [number, number, number], c
 
   return (
     <mesh ref={meshRef} position={position}>
-      <sphereGeometry args={[0.04, 16, 16]} />
+      <sphereGeometry args={[size, 16, 16]} />
       <meshBasicMaterial
         color={color}
         transparent
@@ -95,7 +99,7 @@ function AttackArc({ start, end, color }: { start: [number, number, number], end
   );
 }
 
-function EarthGlobe({ attacks }: { attacks: Attack[] }) {
+function EarthGlobe({ attacks, abuseThreats = [] }: { attacks: Attack[]; abuseThreats?: any[] }) {
   const groupRef = useRef<THREE.Group>(null);
   const texture = useMemo(() => {
     const loader = new THREE.TextureLoader();
@@ -109,7 +113,7 @@ function EarthGlobe({ attacks }: { attacks: Attack[] }) {
     }
   });
 
-  const { validArcs, dots } = useMemo(() => {
+  const { validArcs, dots, purpleDots } = useMemo(() => {
     const coords = (lat: number, lon: number, radius = 2) => {
       const phi = (90 - lat) * (Math.PI / 180);
       const theta = (lon + 180) * (Math.PI / 180);
@@ -122,7 +126,9 @@ function EarthGlobe({ attacks }: { attacks: Attack[] }) {
 
     const validArcs: Array<{ start: [number, number, number], end: [number, number, number], color: string }> = [];
     const dots: Array<{ position: [number, number, number], color: string }> = [];
+    const purpleDots: Array<{ position: [number, number, number] }> = [];
 
+    // Process Cloudflare attacks
     attacks.forEach(attack => {
       const start = coords(attack.sourceCoords.lat, attack.sourceCoords.lon);
       const end = coords(attack.targetCoords.lat, attack.targetCoords.lon);
@@ -144,8 +150,16 @@ function EarthGlobe({ attacks }: { attacks: Attack[] }) {
       }
     });
 
-    return { validArcs, dots };
-  }, [attacks]);
+    // Process AbuseIPDB threats as prominent purple dots
+    abuseThreats.forEach(threat => {
+      if (threat.sourceCoords) {
+        const position = coords(threat.sourceCoords.lat, threat.sourceCoords.lon);
+        purpleDots.push({ position });
+      }
+    });
+
+    return { validArcs, dots, purpleDots };
+  }, [attacks, abuseThreats]);
 
   return (
     <group ref={groupRef}>
@@ -178,6 +192,11 @@ function EarthGlobe({ attacks }: { attacks: Attack[] }) {
       {dots.map((dot, i) => (
         <PulsingDot key={`dot-${i}`} position={dot.position} color={dot.color} />
       ))}
+
+      {/* Prominent purple dots for AbuseIPDB threats */}
+      {purpleDots.map((dot, i) => (
+        <PulsingDot key={`purple-${i}`} position={dot.position} color="#a855f7" size={0.08} />
+      ))}
     </group>
   );
 }
@@ -189,7 +208,10 @@ interface Attack {
 }
 
 
-export function Globe({ attacks = [] }: { attacks?: Attack[] }) {
+export function Globe({ attacks = [], abuseThreats = [] }: {
+  attacks?: Attack[];
+  abuseThreats?: any[];
+}) {
   return (
     <div className="w-full h-full relative overflow-hidden">
       {/* Deep Space Background with Multiple Layers */}
@@ -288,7 +310,7 @@ export function Globe({ attacks = [] }: { attacks?: Attack[] }) {
         <pointLight position={[10, 10, 10]} intensity={1.3} />
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#60a5fa" />
 
-        <EarthGlobe attacks={attacks} />
+        <EarthGlobe attacks={attacks} abuseThreats={abuseThreats} />
 
         <OrbitControls
           enableZoom={true}
