@@ -54,7 +54,7 @@ cd ddos-attack-map
 
 **Backend:**
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 **Frontend:**
