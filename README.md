@@ -221,15 +221,6 @@ You are free to:
 
 ---
 
-## Acknowledgments
-
-- **Data Sources**: Cloudflare Radar, AbuseIPDB
-- **Geolocation**: GeoLite2 by MaxMind
-- **3D Rendering**: Three.js community
-- **UI Framework**: React & TailwindCSS teams
-
----
-
 ## 📚 Documentation
 
 For detailed API documentation, visit:
