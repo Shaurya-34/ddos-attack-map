@@ -1,4 +1,4 @@
-# 🌍 ThreatPulse Monitor
+#  ThreatPulse Monitor
 
 A real-time DDoS attack visualization platform featuring an interactive 3D globe, live threat metrics, and deep space aesthetics. Powered by Cloudflare Radar and AbuseIPDB data with machine learning threat classification.
 
@@ -6,16 +6,14 @@ A real-time DDoS attack visualization platform featuring an interactive 3D globe
 
 ---
 
-##  Features
-
-### 🎨 Visual Design
+###  Visual Design
 - **Immersive Space Background** - Multi-layered starfield with animated nebula effects
 - **3D Interactive Globe** - Realistic Earth texture with smooth rotation and zoom controls
 - **Animated Attack Arcs** - Flowing cyan/red arcs showing attack paths between countries
 - **Pulsing Attack Indicators** - Glowing dots for same-location attacks
 - **Premium UI** - Glassmorphic panels with depth and modern aesthetics
 
-### 📊 Live Data & Metrics
+###  Live Data & Metrics
 - **Real-Time Attack Feed** - Live updates from Cloudflare Radar API
 - **Live Threat Intelligence** - Fresh threat IPs from AbuseIPDB with real-time SHA-256 hashing
 - **Dynamic Trend Indicators** - Live-calculated percentage changes for metrics
@@ -23,13 +21,13 @@ A real-time DDoS attack visualization platform featuring an interactive 3D globe
 - **Auto-Refresh** - Optional automatic data updates
 - **Severity-Based Color Coding** - Green (low) / Amber (medium) / Red (high)
 
-### 🔒 Security & Privacy
+###  Security & Privacy
 - **IP Anonymization** - All IPs hashed with SHA-256
 - **ML Threat Scoring** - Machine learning model for threat classification
 - **Country-Level Geolocation** - Privacy-preserving location data
 - **No Raw IP Storage** - Full GDPR compliance
 
-### 🛠️ Technical Stack
+###  Technical Stack
 - **Frontend**: React + TypeScript + Vite
 - **3D Rendering**: Three.js with React Three Fiber
 - **Backend**: FastAPI (Python)
@@ -38,7 +36,7 @@ A real-time DDoS attack visualization platform featuring an interactive 3D globe
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm
@@ -95,7 +93,7 @@ npm run dev
 
 ---
 
-## 🔑 API Keys Setup
+##  API Keys Setup
 
 ### Cloudflare Radar Token (Required)
 1. Sign up at [Cloudflare](https://www.cloudflare.com/)
@@ -115,7 +113,7 @@ npm run dev
 
 ---
 
-## 🟣 AbuseIPDB Features
+##  AbuseIPDB Features
 
 - **Live Threat Intelligence** - Real-time threat IPs with SHA-256 hashing for privacy
 - **Purple Pulsing Dots** - Distinct purple markers on globe for AbuseIPDB threats
@@ -126,7 +124,7 @@ npm run dev
 
 ---
 
-## 📸 Screenshots
+##  Screenshots
 
 ### Main Globe View
 Real-time attack visualization with deep space background and live metrics.
@@ -140,7 +138,7 @@ Filter attacks by time period (Live, 5m, 1h, 24h).
 
 ---
 
-## 🤖 Machine Learning Model
+##  Machine Learning Model
 
 The project includes a pre-trained ML model for threat classification:
 
@@ -158,7 +156,7 @@ python train_model.py
 
 ---
 
-## 🎯 Recent Updates
+##  Recent Updates
 
 -  Added immersive deep space background with stars and nebula
 -  Live trend percentages (calculated from real metrics).
@@ -171,7 +169,7 @@ python train_model.py
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 ddos-attack-map/
@@ -200,28 +198,28 @@ ddos-attack-map/
 
 ---
 
-## 🛡️ Privacy & Compliance
+##  Privacy & Compliance
 
-- ✅ **GDPR Compliant**: No raw IP addresses stored or transmitted
-- ✅ **SHA-256 Hashing**: All IPs anonymized before storage
-- ✅ **Country-Level Only**: Location data limited to country coordinates
-- ✅ **No User Tracking**: Zero analytics or user data collection
+-  **GDPR Compliant**: No raw IP addresses stored or transmitted
+-  **SHA-256 Hashing**: All IPs anonymized before storage
+-  **Country-Level Only**: Location data limited to country coordinates
+-  **No User Tracking**: Zero analytics or user data collection
 
 ---
 
-## 📄 License
+##  License
 
 MIT License - See [LICENSE](LICENSE) for details.
 
 You are free to:
-- ✅ Use commercially
-- ✅ Modify and distribute
-- ✅ Use privately
-- ⚠️ Must include original license and copyright notice
+-  Use commercially
+-  Modify and distribute
+-  Use privately
+-  Must include original license and copyright notice
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 For detailed API documentation, visit:
 - Backend API: `http://127.0.0.1:8000/docs` (when running locally)
@@ -229,14 +227,14 @@ For detailed API documentation, visit:
 
 ---
 
-## 🐛 Known Issues
+##  Known Issues
 
 - Globe may render slowly on low-end devices (disable animations in settings)
 - First load may take 2-3 seconds while fetching data
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions welcome! Please:
 1. Fork the repository
@@ -246,10 +244,10 @@ Contributions welcome! Please:
 
 ---
 
-## 📧 Contact
+##  Contact
 
 For questions or support, open an issue on [GitHub](https://github.com/Shaurya-34/ddos-attack-map/issues).
 
 ---
 
-**Built with ❤️ for cybersecurity visualization**
+**Built with  for cybersecurity visualization**
